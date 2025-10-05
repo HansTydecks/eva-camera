@@ -857,9 +857,12 @@ class EVACameraStation {
 
     async printPhoto() {
         try {
-            // Convert canvas to blob
+            // Create a framed version of the photo
+            const framedCanvas = this.createFramedPhoto();
+            
+            // Convert framed canvas to blob
             const blob = await new Promise(resolve => {
-                this.canvas.toBlob(resolve, 'image/png');
+                framedCanvas.toBlob(resolve, 'image/png');
             });
             
             // Create object URL
@@ -875,16 +878,34 @@ class EVACameraStation {
                         <head>
                             <title>EVA Kamera - Foto</title>
                             <style>
-                                body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-                                img { max-width: 100%; max-height: 100%; }
+                                body { 
+                                    margin: 0; 
+                                    display: flex; 
+                                    justify-content: center; 
+                                    align-items: center; 
+                                    min-height: 100vh; 
+                                    background: #f5f5f5;
+                                }
+                                .photo-container {
+                                    text-align: center;
+                                    padding: 20px;
+                                }
+                                img { 
+                                    max-width: 90%; 
+                                    max-height: 80vh; 
+                                    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                                }
                                 @media print {
-                                    body { margin: 0; }
+                                    body { margin: 0; background: white; }
+                                    .photo-container { padding: 10px; }
                                     img { width: 100%; height: auto; }
                                 }
                             </style>
                         </head>
                         <body>
-                            <img src="${url}" alt="Aufgenommenes Foto" />
+                            <div class="photo-container">
+                                <img src="${url}" alt="EVA Prinzip Foto" />
+                            </div>
                         </body>
                     </html>
                 `);
@@ -908,6 +929,47 @@ class EVACameraStation {
             console.error('Print error:', error);
             this.updateCameraStatus('Drucken nicht möglich');
         }
+    }
+
+    createFramedPhoto() {
+        const frameWidth = 60;
+        const textHeight = 40;
+        const originalWidth = this.canvas.width;
+        const originalHeight = this.canvas.height;
+        
+        // Create new canvas with frame
+        const framedCanvas = document.createElement('canvas');
+        framedCanvas.width = originalWidth + (frameWidth * 2);
+        framedCanvas.height = originalHeight + (frameWidth * 2) + textHeight;
+        
+        const framedCtx = framedCanvas.getContext('2d');
+        
+        // Draw frame background
+        framedCtx.fillStyle = '#2d2520';
+        framedCtx.fillRect(0, 0, framedCanvas.width, framedCanvas.height);
+        
+        // Draw inner frame
+        framedCtx.fillStyle = '#d4943a';
+        framedCtx.fillRect(frameWidth - 5, frameWidth - 5, originalWidth + 10, originalHeight + 10);
+        
+        // Draw photo
+        framedCtx.drawImage(this.canvas, frameWidth, frameWidth);
+        
+        // Draw text background
+        const textY = frameWidth + originalHeight + 10;
+        framedCtx.fillStyle = '#2d2520';
+        framedCtx.fillRect(0, textY, framedCanvas.width, textHeight);
+        
+        // Draw EVA text
+        framedCtx.fillStyle = '#f4a261';
+        framedCtx.font = 'bold 16px Arial, sans-serif';
+        framedCtx.textAlign = 'center';
+        framedCtx.textBaseline = 'middle';
+        
+        const text = 'Aufgenommen nach dem EVA-Prinzip: Eingabe, Verarbeitung, Ausgabe';
+        framedCtx.fillText(text, framedCanvas.width / 2, textY + (textHeight / 2));
+        
+        return framedCanvas;
     }
 
     handleCameraError(error) {

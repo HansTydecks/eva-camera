@@ -257,6 +257,21 @@ body {
     line-height: 1.3;
 }
 
+.filter-hint {
+    margin-top: 8px;
+    padding: 6px 10px;
+    background: rgba(212, 148, 58, 0.1);
+    border-radius: 8px;
+    border: 1px solid rgba(212, 148, 58, 0.3);
+}
+
+.filter-hint small {
+    color: #d4943a;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
 /* Success Message */
 .success-message {
     position: absolute;
@@ -443,6 +458,15 @@ footer {
     
     .mission-text p {
         font-size: 0.8rem;
+    }
+    
+    .filter-hint {
+        margin-top: 6px;
+        padding: 5px 8px;
+    }
+    
+    .filter-hint small {
+        font-size: 0.65rem;
     }
     
     .controls {
