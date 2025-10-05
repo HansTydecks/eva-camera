@@ -41,12 +41,17 @@ body {
     overflow: hidden;
 }
 
-#cameraPreview {
+#cameraPreview, #previewCanvas {
     width: 100%;
     height: 100%;
     object-fit: cover;
     border-radius: 15px;
     background: #2d2520;
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    right: 20px;
+    bottom: 20px;
 }
 
 #photoCanvas {

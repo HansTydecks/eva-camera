@@ -2,10 +2,14 @@ class EVACameraStation {
     constructor() {
         this.stream = null;
         this.video = document.getElementById('cameraPreview');
+        this.previewCanvas = document.getElementById('previewCanvas');
+        this.previewCtx = this.previewCanvas.getContext('2d');
         this.canvas = document.getElementById('photoCanvas');
         this.ctx = this.canvas.getContext('2d');
         this.isCameraActive = false;
         this.currentFilter = 'none';
+        this.previewAnimationId = null;
+        this.isComplexFilter = false;
         
         // Timer system
         this.workingTime = 180; // 3 minutes in seconds
@@ -106,6 +110,13 @@ class EVACameraStation {
         this.video.srcObject = null;
         this.isCameraActive = false;
         
+        // Stop preview processing
+        this.stopPreviewProcessing();
+        
+        // Reset display
+        this.video.style.display = 'block';
+        this.previewCanvas.style.display = 'none';
+        
         // Update UI
         this.updateCameraUI();
         this.updateCameraStatus('Bereit');
@@ -135,9 +146,23 @@ class EVACameraStation {
         document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
         document.querySelector(`[data-filter="${filterType}"]`).classList.add('active');
         
-        // Apply filter to video and overlay
-        this.video.className = `filter-${filterType}`;
-        this.filterOverlay.className = `filter-overlay filter-${filterType}`;
+        // Check if this is a complex filter that needs canvas processing
+        const complexFilters = ['pixelate', 'fisheye', 'mirror', 'ascii', 'popart'];
+        this.isComplexFilter = complexFilters.includes(filterType);
+        
+        if (this.isComplexFilter) {
+            // Show canvas for complex filters
+            this.video.style.display = 'none';
+            this.previewCanvas.style.display = 'block';
+            this.startPreviewProcessing();
+        } else {
+            // Use CSS filters for simple filters
+            this.video.style.display = 'block';
+            this.previewCanvas.style.display = 'none';
+            this.stopPreviewProcessing();
+            this.video.className = `filter-${filterType}`;
+            this.filterOverlay.className = `filter-overlay filter-${filterType}`;
+        }
     }
 
     async capturePhoto() {
@@ -573,6 +598,235 @@ class EVACameraStation {
         }
         
         return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+    }
+
+    startPreviewProcessing() {
+        if (!this.isCameraActive) return;
+        
+        // Set canvas size to match video
+        const rect = this.video.getBoundingClientRect();
+        this.previewCanvas.width = this.video.videoWidth || 640;
+        this.previewCanvas.height = this.video.videoHeight || 480;
+        
+        const processFrame = () => {
+            if (!this.isCameraActive || !this.isComplexFilter) return;
+            
+            // Draw current video frame to canvas
+            this.previewCtx.drawImage(this.video, 0, 0, this.previewCanvas.width, this.previewCanvas.height);
+            
+            // Apply the current filter
+            this.applyPreviewFilter();
+            
+            // Continue processing
+            this.previewAnimationId = requestAnimationFrame(processFrame);
+        };
+        
+        processFrame();
+    }
+
+    stopPreviewProcessing() {
+        if (this.previewAnimationId) {
+            cancelAnimationFrame(this.previewAnimationId);
+            this.previewAnimationId = null;
+        }
+    }
+
+    applyPreviewFilter() {
+        switch (this.currentFilter) {
+            case 'pixelate':
+                this.applyPixelateFilterToCanvas(this.previewCtx, this.previewCanvas);
+                break;
+            case 'fisheye':
+                this.applyFisheyeFilterToCanvas(this.previewCtx, this.previewCanvas);
+                break;
+            case 'mirror':
+                this.applyMirrorFilterToCanvas(this.previewCtx, this.previewCanvas);
+                break;
+            case 'ascii':
+                this.applyASCIIFilterToCanvas(this.previewCtx, this.previewCanvas);
+                break;
+            case 'popart':
+                this.applyPopArtFilterToCanvas(this.previewCtx, this.previewCanvas);
+                break;
+        }
+    }
+
+    applyPixelateFilterToCanvas(ctx, canvas) {
+        const pixelSize = 12; // Slightly larger for preview performance
+        const width = canvas.width;
+        const height = canvas.height;
+        
+        for (let y = 0; y < height; y += pixelSize) {
+            for (let x = 0; x < width; x += pixelSize) {
+                const imageData = ctx.getImageData(x, y, Math.min(pixelSize, width - x), Math.min(pixelSize, height - y));
+                const data = imageData.data;
+                
+                let r = 0, g = 0, b = 0, count = 0;
+                for (let i = 0; i < data.length; i += 4) {
+                    r += data[i];
+                    g += data[i + 1];
+                    b += data[i + 2];
+                    count++;
+                }
+                
+                if (count > 0) {
+                    r = Math.floor(r / count);
+                    g = Math.floor(g / count);
+                    b = Math.floor(b / count);
+                    
+                    ctx.fillStyle = `rgb(${r},${g},${b})`;
+                    ctx.fillRect(x, y, Math.min(pixelSize, width - x), Math.min(pixelSize, height - y));
+                }
+            }
+        }
+    }
+
+    applyFisheyeFilterToCanvas(ctx, canvas) {
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        const width = canvas.width;
+        const height = canvas.height;
+        const centerX = width / 2;
+        const centerY = height / 2;
+        const radius = Math.min(centerX, centerY);
+        
+        const newImageData = ctx.createImageData(width, height);
+        const newData = newImageData.data;
+        
+        for (let y = 0; y < height; y += 2) { // Skip every other pixel for performance
+            for (let x = 0; x < width; x += 2) {
+                const dx = x - centerX;
+                const dy = y - centerY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < radius) {
+                    const factor = distance / radius;
+                    const fisheyeFactor = factor * factor;
+                    
+                    const sourceX = Math.floor(centerX + dx * fisheyeFactor);
+                    const sourceY = Math.floor(centerY + dy * fisheyeFactor);
+                    
+                    if (sourceX >= 0 && sourceX < width && sourceY >= 0 && sourceY < height) {
+                        const targetIndex = (y * width + x) * 4;
+                        const sourceIndex = (sourceY * width + sourceX) * 4;
+                        
+                        newData[targetIndex] = data[sourceIndex];
+                        newData[targetIndex + 1] = data[sourceIndex + 1];
+                        newData[targetIndex + 2] = data[sourceIndex + 2];
+                        newData[targetIndex + 3] = data[sourceIndex + 3];
+                    }
+                }
+            }
+        }
+        
+        ctx.putImageData(newImageData, 0, 0);
+    }
+
+    applyMirrorFilterToCanvas(ctx, canvas) {
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.scale(-1, 1);
+        ctx.putImageData(imageData, -canvas.width, 0);
+        ctx.scale(-1, 1); // Reset scale
+    }
+
+    applyASCIIFilterToCanvas(ctx, canvas) {
+        const chars = '@%#*+=-:. ';
+        const width = canvas.width;
+        const height = canvas.height;
+        const blockSize = 16; // Larger blocks for preview performance
+        
+        // Set background
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, width, height);
+        
+        // Set text properties
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `${blockSize}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const data = imageData.data;
+        
+        for (let y = 0; y < height; y += blockSize) {
+            for (let x = 0; x < width; x += blockSize) {
+                let totalBrightness = 0;
+                let pixelCount = 0;
+                
+                // Calculate average brightness for this block
+                for (let dy = 0; dy < blockSize && y + dy < height; dy += 2) { // Skip pixels for performance
+                    for (let dx = 0; dx < blockSize && x + dx < width; dx += 2) {
+                        const idx = ((y + dy) * width + (x + dx)) * 4;
+                        const brightness = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
+                        totalBrightness += brightness;
+                        pixelCount++;
+                    }
+                }
+                
+                if (pixelCount > 0) {
+                    const avgBrightness = totalBrightness / pixelCount;
+                    const charIndex = Math.floor((avgBrightness / 255) * (chars.length - 1));
+                    const char = chars[charIndex];
+                    
+                    ctx.fillText(char, x + blockSize / 2, y + blockSize / 2);
+                }
+            }
+        }
+    }
+
+    applyPopArtFilterToCanvas(ctx, canvas) {
+        const width = canvas.width;
+        const height = canvas.height;
+        const quadWidth = width / 2;
+        const quadHeight = height / 2;
+        
+        // Get original image data
+        const originalImageData = ctx.getImageData(0, 0, width, height);
+        
+        // Create 4 versions with different color effects
+        const effects = [
+            (r, g, b) => [Math.min(255, r * 1.5), g * 0.5, b * 0.5], // Red boost
+            (r, g, b) => [r * 0.5, Math.min(255, g * 1.5), b * 0.5], // Green boost
+            (r, g, b) => [r * 0.5, g * 0.5, Math.min(255, b * 1.5)], // Blue boost
+            (r, g, b) => [255 - r, 255 - g, 255 - b] // Negative
+        ];
+        
+        // Clear canvas
+        ctx.clearRect(0, 0, width, height);
+        
+        // Draw 4 quadrants with different effects
+        for (let i = 0; i < 4; i++) {
+            const x = (i % 2) * quadWidth;
+            const y = Math.floor(i / 2) * quadHeight;
+            
+            // Create modified image data for this quadrant
+            const quadImageData = ctx.createImageData(quadWidth, quadHeight);
+            const quadData = quadImageData.data;
+            
+            for (let py = 0; py < quadHeight; py += 2) { // Skip pixels for performance
+                for (let px = 0; px < quadWidth; px += 2) {
+                    const sourceIdx = ((py * 2) * width + (px * 2)) * 4;
+                    const targetIdx = (py * quadWidth + px) * 4;
+                    
+                    if (sourceIdx < originalImageData.data.length) {
+                        const r = originalImageData.data[sourceIdx];
+                        const g = originalImageData.data[sourceIdx + 1];
+                        const b = originalImageData.data[sourceIdx + 2];
+                        const a = originalImageData.data[sourceIdx + 3];
+                        
+                        const [newR, newG, newB] = effects[i](r, g, b);
+                        
+                        quadData[targetIdx] = newR;
+                        quadData[targetIdx + 1] = newG;
+                        quadData[targetIdx + 2] = newB;
+                        quadData[targetIdx + 3] = a;
+                    }
+                }
+            }
+            
+            ctx.putImageData(quadImageData, x, y);
+        }
     }
 
     showCaptureAnimation() {
