@@ -896,9 +896,31 @@ class EVACameraStation {
                                     box-shadow: 0 4px 20px rgba(0,0,0,0.3);
                                 }
                                 @media print {
-                                    body { margin: 0; background: white; }
-                                    .photo-container { padding: 10px; }
-                                    img { width: 100%; height: auto; }
+                                    @page {
+                                        size: A4;
+                                        margin: 0.5in;
+                                    }
+                                    body { 
+                                        margin: 0; 
+                                        background: white;
+                                        width: 100%;
+                                        height: 100vh;
+                                    }
+                                    .photo-container { 
+                                        padding: 0;
+                                        width: 100%;
+                                        height: 100%;
+                                        display: flex;
+                                        justify-content: center;
+                                        align-items: center;
+                                    }
+                                    img { 
+                                        max-width: 100%; 
+                                        max-height: 100%; 
+                                        width: auto;
+                                        height: auto;
+                                        object-fit: contain;
+                                    }
                                 }
                             </style>
                         </head>
