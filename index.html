@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EVA-Prinzip: Kamera → Drucker</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <main class="main-content">
+            <!-- Dominant Camera Preview Area -->
+            <div class="visualization-container">
+                <video id="cameraPreview" autoplay muted playsinline></video>
+                <canvas id="photoCanvas" style="display: none;"></canvas>
+                
+                <!-- Filter Overlay -->
+                <div class="filter-overlay" id="filterOverlay"></div>
+                
+                <!-- Success Message -->
+                <div class="success-message" id="successMessage">
+                    📸 Foto erfolgreich aufgenommen!
+                </div>
+                
+                <!-- Timer Display -->
+                <div class="timer-display" id="timerDisplay" style="display: none;">
+                    <span id="timerText">03:00</span>
+                </div>
+            </div>
+
+            <!-- Camera Controls -->
+            <div class="controls">
+                <button id="startCameraBtn" class="control-btn">Kamera starten</button>
+                <button id="captureBtn" class="control-btn capture-btn" style="display: none;">📸 Foto aufnehmen</button>
+                <div class="camera-status" id="cameraStatus">Bereit</div>
+            </div>
+
+            <!-- Filter Controls -->
+            <div class="filter-controls" id="filterControls" style="display: none;">
+                <button class="filter-btn active" data-filter="none">Normal</button>
+                <button class="filter-btn" data-filter="sepia">Sepia</button>
+                <button class="filter-btn" data-filter="grayscale">Schwarz-Weiß</button>
+                <button class="filter-btn" data-filter="blur">Weichzeichner</button>
+                <button class="filter-btn" data-filter="brightness">Hell</button>
+                <button class="filter-btn" data-filter="vintage">Vintage</button>
+            </div>
+
+            <!-- Mission Box with Byte and Timer -->
+            <div class="mission-box">
+                <div class="byte-companion" id="byteCompanion">
+                    <div class="byte-circle">
+                        <img class="byte-character" id="byteCharacter" src="Byte_mascot/Byte_normal.png" alt="Byte">
+                    </div>
+                </div>
+                <div class="mission-text">
+                    <h3 id="missionTitle">Mission: Foto aufnehmen!</h3>
+                    <p id="missionDescription">Probiere verschiedene Filter aus und mache ein tolles Foto</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal for Worksheet Phase -->
+    <div class="modal-overlay" id="modalOverlay" style="display: none;">
+        <div class="modal-content">
+            <div class="byte-companion modal-byte">
+                <div class="byte-circle">
+                    <img class="byte-character" src="Byte_mascot/Byte_Thinking.png" alt="Byte denkt">
+                </div>
+            </div>
+            <h2>Arbeitsblatt ausfüllen</h2>
+            <p>Fülle nun dein Arbeitsblatt zum EVA-Prinzip aus!</p>
+            <div class="modal-timer" id="modalTimer">03:00</div>
+        </div>
+    </div>
+
+    <!-- Station Change Message -->
+    <div class="station-change-overlay" id="stationChangeOverlay" style="display: none;">
+        <div class="station-change-content">
+            <h2>Wechsle die Station!</h2>
+            <p>F5 drücken um diese Station zu starten</p>
+        </div>
+    </div>
+
+    <footer>
+        <div class="impressum">
+            <p>
+                Entwickelt für Lernende und Lehrende |
+                <a href="https://tinfo.space/teachers/Digitale_Tools/" target="_blank" rel="noopener">More apps and tools</a> 
+                <a href="http://contact.tinfo.space/" id="contact-link">Kontakt</a> 
+                <a href="https://linktr.ee/tinfo.space" target="_blank" rel="noopener">Links</a> 
+                <a href="https://github.com/HansTydecks" target="_blank" rel="noopener">GitHub</a> 
+                © 2025 Hans Tydecks
+            </p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
