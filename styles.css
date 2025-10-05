@@ -74,6 +74,14 @@ body {
 .filter-blur { filter: blur(2px); }
 .filter-brightness { filter: brightness(130%) contrast(110%); }
 .filter-vintage { filter: sepia(80%) saturate(120%) hue-rotate(10deg) contrast(110%); }
+.filter-pixelate { image-rendering: pixelated; image-rendering: -moz-crisp-edges; }
+.filter-fisheye { transform: perspective(500px) rotateX(5deg); }
+.filter-mirror { transform: scaleX(-1); }
+.filter-rainbow { filter: hue-rotate(0deg) saturate(200%); animation: rainbow-shift 3s infinite linear; }
+.filter-negative { filter: invert(100%); }
+.filter-ascii { filter: contrast(200%) brightness(150%); }
+.filter-sketch { filter: grayscale(100%) contrast(200%) brightness(150%); }
+.filter-popart { filter: saturate(300%) contrast(150%) brightness(120%); }
 
 /* Timer Display */
 .timer-display {
@@ -141,10 +149,11 @@ body {
 /* Filter Controls */
 .filter-controls {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
     justify-content: center;
     margin-bottom: 10px;
+    max-width: 95vw;
 }
 
 .filter-btn {
@@ -487,4 +496,13 @@ footer {
 @keyframes celebration-pulse {
     0%, 100% { filter: brightness(1); }
     50% { filter: brightness(1.1); }
+}
+
+/* Rainbow Animation */
+@keyframes rainbow-shift {
+    0% { filter: hue-rotate(0deg) saturate(200%); }
+    25% { filter: hue-rotate(90deg) saturate(200%); }
+    50% { filter: hue-rotate(180deg) saturate(200%); }
+    75% { filter: hue-rotate(270deg) saturate(200%); }
+    100% { filter: hue-rotate(360deg) saturate(200%); }
 }

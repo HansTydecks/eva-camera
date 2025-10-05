@@ -197,6 +197,30 @@ class EVACameraStation {
             case 'vintage':
                 this.applyVintageFilter(data);
                 break;
+            case 'pixelate':
+                this.applyPixelateFilter();
+                return; // Special handling
+            case 'fisheye':
+                this.applyFisheyeFilter();
+                return; // Special handling
+            case 'mirror':
+                this.applyMirrorFilter();
+                return; // Special handling
+            case 'rainbow':
+                this.applyRainbowFilter(data);
+                break;
+            case 'negative':
+                this.applyNegativeFilter(data);
+                break;
+            case 'ascii':
+                this.applyASCIIFilter();
+                return; // Special handling
+            case 'sketch':
+                this.applySketchFilter(data);
+                break;
+            case 'popart':
+                this.applyPopArtFilter();
+                return; // Special handling
             // blur filter is handled by CSS during capture
         }
         
@@ -248,6 +272,307 @@ class EVACameraStation {
             data[i] = Math.min(255, data[i] + 10);
             data[i + 1] = Math.min(255, data[i + 1] + 5);
         }
+    }
+
+    applyPixelateFilter() {
+        const pixelSize = 8;
+        const width = this.canvas.width;
+        const height = this.canvas.height;
+        
+        for (let y = 0; y < height; y += pixelSize) {
+            for (let x = 0; x < width; x += pixelSize) {
+                const imageData = this.ctx.getImageData(x, y, pixelSize, pixelSize);
+                const data = imageData.data;
+                
+                let r = 0, g = 0, b = 0, count = 0;
+                for (let i = 0; i < data.length; i += 4) {
+                    r += data[i];
+                    g += data[i + 1];
+                    b += data[i + 2];
+                    count++;
+                }
+                
+                if (count > 0) {
+                    r = Math.floor(r / count);
+                    g = Math.floor(g / count);
+                    b = Math.floor(b / count);
+                    
+                    this.ctx.fillStyle = `rgb(${r},${g},${b})`;
+                    this.ctx.fillRect(x, y, pixelSize, pixelSize);
+                }
+            }
+        }
+    }
+
+    applyFisheyeFilter() {
+        const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+        const data = imageData.data;
+        const width = this.canvas.width;
+        const height = this.canvas.height;
+        const centerX = width / 2;
+        const centerY = height / 2;
+        const radius = Math.min(centerX, centerY);
+        
+        const newImageData = this.ctx.createImageData(width, height);
+        const newData = newImageData.data;
+        
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const dx = x - centerX;
+                const dy = y - centerY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < radius) {
+                    const factor = distance / radius;
+                    const fisheyeFactor = factor * factor;
+                    
+                    const sourceX = Math.floor(centerX + dx * fisheyeFactor);
+                    const sourceY = Math.floor(centerY + dy * fisheyeFactor);
+                    
+                    if (sourceX >= 0 && sourceX < width && sourceY >= 0 && sourceY < height) {
+                        const targetIndex = (y * width + x) * 4;
+                        const sourceIndex = (sourceY * width + sourceX) * 4;
+                        
+                        newData[targetIndex] = data[sourceIndex];
+                        newData[targetIndex + 1] = data[sourceIndex + 1];
+                        newData[targetIndex + 2] = data[sourceIndex + 2];
+                        newData[targetIndex + 3] = data[sourceIndex + 3];
+                    }
+                }
+            }
+        }
+        
+        this.ctx.putImageData(newImageData, 0, 0);
+    }
+
+    applyMirrorFilter() {
+        this.ctx.scale(-1, 1);
+        this.ctx.drawImage(this.canvas, -this.canvas.width, 0);
+        this.ctx.scale(-1, 1); // Reset scale
+    }
+
+    applyRainbowFilter(data) {
+        for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+            
+            // Convert to HSL and shift hue
+            const hsl = this.rgbToHsl(r, g, b);
+            hsl[0] = (hsl[0] + 0.3) % 1; // Shift hue
+            hsl[1] = Math.min(1, hsl[1] * 2); // Increase saturation
+            
+            const rgb = this.hslToRgb(hsl[0], hsl[1], hsl[2]);
+            data[i] = rgb[0];
+            data[i + 1] = rgb[1];
+            data[i + 2] = rgb[2];
+        }
+    }
+
+    applyNegativeFilter(data) {
+        for (let i = 0; i < data.length; i += 4) {
+            data[i] = 255 - data[i];       // Red
+            data[i + 1] = 255 - data[i + 1]; // Green
+            data[i + 2] = 255 - data[i + 2]; // Blue
+        }
+    }
+
+    applySketchFilter(data) {
+        // First apply grayscale
+        for (let i = 0; i < data.length; i += 4) {
+            const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+            data[i] = gray;
+            data[i + 1] = gray;
+            data[i + 2] = gray;
+        }
+        
+        // Apply edge detection
+        const width = this.canvas.width;
+        const height = this.canvas.height;
+        const newData = new Uint8ClampedArray(data);
+        
+        for (let y = 1; y < height - 1; y++) {
+            for (let x = 1; x < width - 1; x++) {
+                const idx = (y * width + x) * 4;
+                
+                const gx = -data[((y-1) * width + (x-1)) * 4] + data[((y-1) * width + (x+1)) * 4] +
+                          -2 * data[(y * width + (x-1)) * 4] + 2 * data[(y * width + (x+1)) * 4] +
+                          -data[((y+1) * width + (x-1)) * 4] + data[((y+1) * width + (x+1)) * 4];
+                
+                const gy = -data[((y-1) * width + (x-1)) * 4] - 2 * data[((y-1) * width + x) * 4] - data[((y-1) * width + (x+1)) * 4] +
+                           data[((y+1) * width + (x-1)) * 4] + 2 * data[((y+1) * width + x) * 4] + data[((y+1) * width + (x+1)) * 4];
+                
+                const magnitude = Math.sqrt(gx * gx + gy * gy);
+                const edge = 255 - Math.min(255, magnitude);
+                
+                newData[idx] = edge;
+                newData[idx + 1] = edge;
+                newData[idx + 2] = edge;
+            }
+        }
+        
+        for (let i = 0; i < data.length; i++) {
+            data[i] = newData[i];
+        }
+    }
+
+    applyASCIIFilter() {
+        const chars = '@%#*+=-:. ';
+        const width = this.canvas.width;
+        const height = this.canvas.height;
+        const blockSize = 8;
+        
+        // Create a temporary canvas for text
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = width;
+        tempCanvas.height = height;
+        const tempCtx = tempCanvas.getContext('2d');
+        
+        // Set background
+        tempCtx.fillStyle = '#000000';
+        tempCtx.fillRect(0, 0, width, height);
+        
+        // Set text properties
+        tempCtx.fillStyle = '#ffffff';
+        tempCtx.font = `${blockSize}px monospace`;
+        tempCtx.textAlign = 'center';
+        tempCtx.textBaseline = 'middle';
+        
+        const imageData = this.ctx.getImageData(0, 0, width, height);
+        const data = imageData.data;
+        
+        for (let y = 0; y < height; y += blockSize) {
+            for (let x = 0; x < width; x += blockSize) {
+                let totalBrightness = 0;
+                let pixelCount = 0;
+                
+                // Calculate average brightness for this block
+                for (let dy = 0; dy < blockSize && y + dy < height; dy++) {
+                    for (let dx = 0; dx < blockSize && x + dx < width; dx++) {
+                        const idx = ((y + dy) * width + (x + dx)) * 4;
+                        const brightness = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
+                        totalBrightness += brightness;
+                        pixelCount++;
+                    }
+                }
+                
+                const avgBrightness = totalBrightness / pixelCount;
+                const charIndex = Math.floor((avgBrightness / 255) * (chars.length - 1));
+                const char = chars[charIndex];
+                
+                tempCtx.fillText(char, x + blockSize / 2, y + blockSize / 2);
+            }
+        }
+        
+        // Copy the ASCII result back to main canvas
+        this.ctx.clearRect(0, 0, width, height);
+        this.ctx.drawImage(tempCanvas, 0, 0);
+    }
+
+    applyPopArtFilter() {
+        const width = this.canvas.width;
+        const height = this.canvas.height;
+        const quadWidth = width / 2;
+        const quadHeight = height / 2;
+        
+        // Get original image data
+        const originalImageData = this.ctx.getImageData(0, 0, width, height);
+        
+        // Create 4 versions with different color effects
+        const effects = [
+            (r, g, b) => [Math.min(255, r * 1.5), g * 0.5, b * 0.5], // Red boost
+            (r, g, b) => [r * 0.5, Math.min(255, g * 1.5), b * 0.5], // Green boost
+            (r, g, b) => [r * 0.5, g * 0.5, Math.min(255, b * 1.5)], // Blue boost
+            (r, g, b) => [255 - r, 255 - g, 255 - b] // Negative
+        ];
+        
+        // Clear canvas
+        this.ctx.clearRect(0, 0, width, height);
+        
+        // Draw 4 quadrants with different effects
+        for (let i = 0; i < 4; i++) {
+            const x = (i % 2) * quadWidth;
+            const y = Math.floor(i / 2) * quadHeight;
+            
+            // Create modified image data for this quadrant
+            const quadImageData = this.ctx.createImageData(quadWidth, quadHeight);
+            const quadData = quadImageData.data;
+            
+            for (let py = 0; py < quadHeight; py++) {
+                for (let px = 0; px < quadWidth; px++) {
+                    const sourceIdx = ((py * 2) * width + (px * 2)) * 4; // Scale down by 2
+                    const targetIdx = (py * quadWidth + px) * 4;
+                    
+                    if (sourceIdx < originalImageData.data.length) {
+                        const r = originalImageData.data[sourceIdx];
+                        const g = originalImageData.data[sourceIdx + 1];
+                        const b = originalImageData.data[sourceIdx + 2];
+                        const a = originalImageData.data[sourceIdx + 3];
+                        
+                        const [newR, newG, newB] = effects[i](r, g, b);
+                        
+                        quadData[targetIdx] = newR;
+                        quadData[targetIdx + 1] = newG;
+                        quadData[targetIdx + 2] = newB;
+                        quadData[targetIdx + 3] = a;
+                    }
+                }
+            }
+            
+            this.ctx.putImageData(quadImageData, x, y);
+        }
+    }
+
+    // Helper functions for color conversion
+    rgbToHsl(r, g, b) {
+        r /= 255;
+        g /= 255;
+        b /= 255;
+        
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        let h, s, l = (max + min) / 2;
+        
+        if (max === min) {
+            h = s = 0;
+        } else {
+            const d = max - min;
+            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+            
+            switch (max) {
+                case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                case g: h = (b - r) / d + 2; break;
+                case b: h = (r - g) / d + 4; break;
+            }
+            h /= 6;
+        }
+        
+        return [h, s, l];
+    }
+
+    hslToRgb(h, s, l) {
+        let r, g, b;
+        
+        if (s === 0) {
+            r = g = b = l;
+        } else {
+            const hue2rgb = (p, q, t) => {
+                if (t < 0) t += 1;
+                if (t > 1) t -= 1;
+                if (t < 1/6) return p + (q - p) * 6 * t;
+                if (t < 1/2) return q;
+                if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                return p;
+            };
+            
+            const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+            const p = 2 * l - q;
+            r = hue2rgb(p, q, h + 1/3);
+            g = hue2rgb(p, q, h);
+            b = hue2rgb(p, q, h - 1/3);
+        }
+        
+        return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
     }
 
     showCaptureAnimation() {
